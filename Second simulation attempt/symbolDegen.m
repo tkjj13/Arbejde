@@ -9,38 +9,38 @@ switch(scheme)
             end
         end
     case 'QPSK'
-        Bits = zeros(length(symbols)/2,2);
-        for n = 1:length(Bits)
-            if (real(symbols(n))>0)
-                Bits(n,1) = 1;
+        Bits = zeros(length(symbols)*2,1);
+        for n = 1:2:length(Bits)
+            if (real(symbols(ceil(n/2)))>0)
+                Bits(n) = 1;
             end
-            if (imag(symbols(n))>0)
-                Bits(n,2) = 1;
+            if (imag(symbols(ceil(n/2)))>0)
+                Bits(n+1) = 1;
             end
         end
     case '8PSK'
-        parallel_bits = ser2per(Bits,3);
-        [number_of_symbols, ~] = size(parallel_bits);
-        symbols = zeros(number_of_symbols,1);
-        for n = 1:number_of_symbols
-            switch(bin2dec(sprintf('%i%i%i',parallel_bits(n,1),parallel_bits(n,2),parallel_bits(n,3))))
-                case 7
-                    symbols(n) = exp(1i*0/8*2*pi);
-                case 6
-                    symbols(n) = exp(1i*1/8*2*pi);
-                case 2
-                    symbols(n) = exp(1i*2/8*2*pi);
-                case 3
-                    symbols(n) = exp(1i*3/8*2*pi);
-                case 1
-                    symbols(n) = exp(1i*4/8*2*pi);
-                case 0
-                    symbols(n) = exp(1i*5/8*2*pi);
-                case 4
-                    symbols(n) = exp(1i*6/8*2*pi);
-                case 5
-                    symbols(n) = exp(1i*7/8*2*pi);
-                otherwise
+        Bits = zeros(length(symbols)*3,1);
+        phase = angle(symbols);
+        for n = 1:length(phase)
+            if phase(n) < 0 
+                phase(n)= phase(n)+2*pi; 
+            end
+            if (phase(n) > pi/8 && phase(n) < 3*pi/8) 
+                Bits(3*(n-1)+1:3*(n-1)+3) = [1 1 0];
+            elseif (phase(n) > 3*pi/8 && phase(n) < 5*pi/8)
+                Bits(3*(n-1)+1:3*(n-1)+3) = [0 1 0];
+            elseif (phase(n) > 5*pi/8 && phase(n) < 7*pi/8)
+                Bits(3*(n-1)+1:3*(n-1)+3) = [0 1 1];
+            elseif (phase(n) > 7*pi/8 && phase(n) < 9*pi/8)
+                Bits(3*(n-1)+1:3*(n-1)+3) = [0 0 1];
+            elseif (phase(n) > 9*pi/8 && phase(n) < 11*pi/8)
+                Bits(3*(n-1)+1:3*(n-1)+3) = [0 0 0];
+            elseif (phase(n) > 11*pi/8 && phase(n) < 13*pi/8)
+                Bits(3*(n-1)+1:3*(n-1)+3) = [1 0 0];
+            elseif (phase(n) > 13*pi/8 && phase(n) < 15*pi/8)
+                Bits(3*(n-1)+1:3*(n-1)+3) = [1 0 1];
+            else
+                Bits(3*(n-1)+1:3*(n-1)+3) = [1 1 1];
             end
         end
     case '64QAM'

@@ -22,14 +22,22 @@ clear all;
 
 
 
-number_of_cariers = 10;
+
 number_of_symbols = 200;
+
+fDev = [repmat(15000,1,10)];
+number_of_cariers = length(fDev);
+
 T = 1E-3;
 N = 1024;
 CP_rate = 0;
-EbN0 = 25;
+EbN0 = 15;
 omega = 1;
+
+%%% USED ONLY FOR GENERATING SYMBOLS %%%
+
 sheme = 'QPSK';
+BPS = 2;    % bits per symbol
 
 %%%%%%%%%%% NOT USED %%%%%%%%%%%%%
 k = 1;
@@ -45,7 +53,7 @@ end
 fs = N/T;
 
 % input
-Bits = randi([0 1],2*number_of_symbols*number_of_cariers,1);
+Bits = randi([0 1],BPS*number_of_symbols*number_of_cariers,1);
 %Bits = repmat([1 1 0 1 1 0 0 0]',10,1);
 [symbols] = symbolGen(Bits, sheme);
 
@@ -85,22 +93,18 @@ y1 = h.*xSer;     % rayleigh fading
 
 %/***	snr=Eb_No-10log(BW/rb)	***/	
 snr_mark = EbN0 - 10*log10(N);	
-
 %/***	=eff./10^(snr_mark/10)		***/	
 sigma_i_mark = 1/10^(snr_mark/10);	
-
 %/***	Add noise	***/	
-
 x_xi = rand(1,length(y1));			% /***	random	number	between	0	and	1	***/	
 x_psi = rand(1,length(y1));	
-
 % if(x_xi>=1.0)
 %     x_xi = 0.99999
 %     disp('Rand	overflow!!!\n');
 % end
 xi = sqrt(-2*sigma_i_mark*log10(1.0-x_xi));	
-y = y1+(xi.*cos(2*pi*x_psi)+1i*xi.*sin(2*pi*x_psi));	%/*ri(t)=si(t)+ni(t)*/	
-	%/*rq(t)=sq(t)+nq(t)*/	
+y = y1+(xi.*cos(2*pi*x_psi)+1i*xi.*sin(2*pi*x_psi));	%/*ri(t)=si(t)+ni(t)*/	 %/*rq(t)=sq(t)+nq(t)*/	
+	
 
 
 
@@ -144,5 +148,5 @@ scatter(real(recSym),imag(recSym));
 recBits = symbolDegen(recSym,sheme);
 
 Err =  sum(xor(recBits,Bits));
-BER = log10(Err/length(Bits))
+BER = (Err/length(Bits))
 

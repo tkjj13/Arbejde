@@ -29,8 +29,8 @@ N = 1024;
 CP_rate = 0;
 EbN0 = 15;
 omega = 1;
-sheme = '8PSK';
-BPS = 3;    % bits per symbol
+sheme = 'QPSK';
+BPS = 2;    % bits per symbol
 
 %%%%%%%%%%% NOT USED %%%%%%%%%%%%%
 k = 1;
@@ -86,22 +86,18 @@ y1 = h.*xSer;     % rayleigh fading
 
 %/***	snr=Eb_No-10log(BW/rb)	***/	
 snr_mark = EbN0 - 10*log10(N);	
-
 %/***	=eff./10^(snr_mark/10)		***/	
 sigma_i_mark = 1/10^(snr_mark/10);	
-
 %/***	Add noise	***/	
-
 x_xi = rand(1,length(y1));			% /***	random	number	between	0	and	1	***/	
 x_psi = rand(1,length(y1));	
-
 % if(x_xi>=1.0)
 %     x_xi = 0.99999
 %     disp('Rand	overflow!!!\n');
 % end
 xi = sqrt(-2*sigma_i_mark*log10(1.0-x_xi));	
-y = y1+(xi.*cos(2*pi*x_psi)+1i*xi.*sin(2*pi*x_psi));	%/*ri(t)=si(t)+ni(t)*/	
-	%/*rq(t)=sq(t)+nq(t)*/	
+y = y1+(xi.*cos(2*pi*x_psi)+1i*xi.*sin(2*pi*x_psi));	%/*ri(t)=si(t)+ni(t)*/	 %/*rq(t)=sq(t)+nq(t)*/	
+	
 
 
 

@@ -4,7 +4,7 @@ Main files
 	Simulation_v1_1
 		Corrected most of the critical flaws but still same BW
 	Simulation_v1_2
-		
+		First attempt at getting different BW for the carriers
 		
 		
 		

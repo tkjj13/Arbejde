@@ -20,8 +20,8 @@ function [RecSym] = Simulation_v1_3(system,channel,symbols)
 
 
 % system.fDev = [repmat(1000,1,5) repmat(2000,1,5)];
-system.fc = [0 10000 20000 30000 40000 60000 80000 100000 120000 140000];
-% system.N = 1024;
+system.fc = [0 10000 20000 30000 40000 60000 80000 100000 120000 140000 160000];
+% system.nFFT = 1024;
  system.CP_rate = 0.75;
 
 
@@ -30,7 +30,7 @@ system.fc = [0 10000 20000 30000 40000 60000 80000 100000 120000 140000];
 T = system.fDev.^(-1);
 Tmax = max(T);
 number_of_cariers = length(system.fDev);
-fs = system.N/Tmax;
+fs = system.nFFT/Tmax;
 
 number_of_symbols = length(symbols)/length(system.fDev);
 %%% USED ONLY FOR GENERATING SYMBOLS %%%
@@ -42,12 +42,12 @@ symbolsPar = ser2par(symbols,number_of_cariers);
 % IFFT
 %t = linspace(0,Tmax,N);             % consider if it should be t = linspace(0,Tmax-Tmax/N,N);
 sz_par = size(symbolsPar);
-x = zeros(sz_par(1),system.N);
+x = zeros(sz_par(1),system.nFFT);
 for sample = 1:sz_par(1)
     for bin = 1:number_of_cariers
         t = 0:1/fs:T(bin)-1/fs;
-        %Temp = symbolsPar(sample,bin)*exp(1i*2*pi*(sum(fDev(1:bin))-fDev(1))*t);
-        Temp = symbolsPar(sample,bin)*exp(1i*2*pi*(system.fc(bin))*t);
+        Temp = symbolsPar(sample,bin)*exp(1i*2*pi*(sum(system.fDev(1:bin))-system.fDev(1))*t);
+        %Temp = symbolsPar(sample,bin)*exp(1i*2*pi*(system.fc(bin))*t);
         x(sample,1:length(Temp)) = x(sample,1:length(Temp)) + Temp;
     end
 end
@@ -60,8 +60,8 @@ end
 sz_x = size(x);
 
 samples = system.CP_dur*0.001*fs;
-reps = floor(samples/system.N);
-rest = floor(mod(samples,system.N));
+reps = floor(samples/system.nFFT);
+rest = floor(mod(samples,system.nFFT));
 
 xCp = repmat(x,1,reps+1);
 xCp = [xCp(:,end-rest:end) xCp(:,2:end)];
@@ -90,14 +90,14 @@ switch (channel.type)
         end
     otherwise 
         y1 = xSer;
-        disp('No channel used');
+        %disp('No channel used');
 end
 
 
 % noise
 
 %	snr=Eb_No-10log(BW/rb)		
-snr_mark = channel.EbN0 - 10*log10(system.N);	
+snr_mark = channel.EbN0 - 10*log10(system.nFFT);	
 %	=eff./10^(snr_mark/10)			
 sigma_i_mark = 1/10^(snr_mark/10);	
 %	Add noise		
@@ -119,10 +119,10 @@ y = y1+(xi.*cos(2*pi*x_psi)+1i*xi.*sin(2*pi*x_psi));	%ri(t)=si(t)+ni(t)	 rq(t)=s
 
 % Correct CFO
 % S/P
-yParCP = transpose(reshape(y(1:length(xSer)),system.N+samples,number_of_symbols));
+yParCP = transpose(reshape(y(1:length(xSer)),system.nFFT+samples,number_of_symbols));
 
 % Remove CP
-yPar = yParCP(:,end-system.N:end);
+yPar = yParCP(:,end-system.nFFT:end);
 
 
 
@@ -133,8 +133,8 @@ recSymPar = zeros(sz_yPar(1),number_of_cariers);
 for sample = 1:sz_yPar(1)
     for bin = 1:number_of_cariers
         t = 0:1/fs:T(bin)-1/fs;
-        %Temp = exp(-1i*2*pi*(sum(fDev(1:bin))-fDev(1))*t);
-        Temp = exp(-1i*2*pi*(system.fc(bin))*t);
+        Temp = exp(-1i*2*pi*(sum(system.fDev(1:bin))-system.fDev(1))*t);
+        %Temp = exp(-1i*2*pi*(system.fc(bin))*t);
 %         if bin ~= 1
 %             Temp2 = yPar(sample,1:length(Temp));
 %             for k = 1:bin-1

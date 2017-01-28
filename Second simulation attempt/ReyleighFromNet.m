@@ -13,36 +13,44 @@
 % presence of Rayeligh fading channel
 
 clear all
-nFFT        = 64; % fft size
-nDSC        = 52; % number of data subcarriers
-nBitPerSym  = 52; % number of bits per OFDM symbol (same as the number of subcarriers for BPSK)
+nFFT        = 128; % fft size
+nDSC        = 100; % number of data subcarriers
+nBitPerSym  = nDSC; % number of bits per OFDM symbol (same as the number of subcarriers for BPSK)
 nSym        = 10^4; % number of symbols
+qpsk        = 1;
 
 EbN0dB      = [0:35]; % bit to noise ratio
-EsN0dB      = EbN0dB + 10*log10(nDSC/nFFT) + 10*log10(64/80); % converting to symbol to noise ratio
+EsN0dB      = EbN0dB + 10*log10(nDSC/nFFT) + 10*log10(nFFT/(nFFT+16)); % converting to symbol to noise ratio
 
 for ii = 1:length(EbN0dB)
-
+   disp(EbN0dB(ii));
    % Transmitter
-   ipBit = rand(1,nBitPerSym*nSym) > 0.5; % random 1's and 0's
-   ipMod = 2*ipBit-1; % BPSK modulation 0 --> -1, 1 --> +1
-   ipMod = reshape(ipMod,nBitPerSym,nSym).'; % grouping into multiple symbolsa
-
+   if ~qpsk
+       ipBit = rand(1,nBitPerSym*nSym) > 0.5; % random 1's and 0's
+       ipMod = 2*ipBit-1; % BPSK modulation 0 --> -1, 1 --> +1
+       ipMod = reshape(ipMod,nBitPerSym,nSym).'; % grouping into multiple symbolsa
+   else
+       ipBit = rand(1,2*nBitPerSym*nSym) > 0.5; % random 1's and 0's
+       ipMod = symbolGen(ipBit,'QPSK'); 
+       ipMod = ser2par(ipMod,nDSC);
+   end
+    
    % Assigning modulated symbols to subcarriers from [-26 to -1, +1 to +26]
-   xF = [zeros(nSym,6) ipMod(:,[1:nBitPerSym/2]) zeros(nSym,1) ipMod(:,[nBitPerSym/2+1:nBitPerSym]) zeros(nSym,5)] ;
+   %xF = [zeros(nSym,6) ipMod(:,[1:nBitPerSym/2]) zeros(nSym,1) ipMod(:,[nBitPerSym/2+1:nBitPerSym]) zeros(nSym,5)] ;
+   xF = [ipMod zeros(nSym,nFFT-nDSC)] ;
    
    % Taking FFT, the term (nFFT/sqrt(nDSC)) is for normalizing the power of transmit symbol to 1 
    xt = (nFFT/sqrt(nDSC))*ifft(fftshift(xF.')).';
 
    % Appending cylic prefix
-   xt = [xt(:,[49:64]) xt];
+   xt = [xt(:,[nFFT-15:nFFT]) xt];
 
    % multipath channel
    nTap = 10;
    ht = 1/sqrt(2)*1/sqrt(nTap)*(randn(nSym,nTap) + j*randn(nSym,nTap));
    
    % computing and storing the frequency response of the channel, for use at recevier
-   hF = fftshift(fft(ht,64,2));
+   hF = fftshift(fft(ht,nFFT,2));
 
    % convolution of each symbol with the random channel
    for jj = 1:nSym
@@ -51,17 +59,17 @@ for ii = 1:length(EbN0dB)
    xt = xht;
 
    % Concatenating multiple symbols to form a long vector
-   xt = reshape(xt.',1,nSym*(80+nTap-1));
+   xt = reshape(xt.',1,nSym*(nFFT+16+nTap-1));
 
    % Gaussian noise of unit variance, 0 mean
-   nt = 1/sqrt(2)*[randn(1,nSym*(80+nTap-1)) + j*randn(1,nSym*(80+nTap-1))];
+   nt = 1/sqrt(2)*[randn(1,nSym*(nFFT+16+nTap-1)) + j*randn(1,nSym*(nFFT+16+nTap-1))];
 
    % Adding noise, the term sqrt(80/64) is to account for the wasted energy due to cyclic prefix
-   yt = sqrt(80/64)*xt + 10^(-EsN0dB(ii)/20)*nt;
+   yt = sqrt((nFFT+16)/nFFT)*xt + 10^(-EsN0dB(ii)/20)*nt;
 
    % Receiver
-   yt = reshape(yt.',80+nTap-1,nSym).'; % formatting the received vector into symbols
-   yt = yt(:,[17:80]); % removing cyclic prefix
+   yt = reshape(yt.',nFFT+16+nTap-1,nSym).'; % formatting the received vector into symbols
+   yt = yt(:,[17:nFFT+16]); % removing cyclic prefix
 
    % converting to frequency domain
    yF = (sqrt(nDSC)/nFFT)*fftshift(fft(yt.')).'; 
@@ -70,8 +78,10 @@ for ii = 1:length(EbN0dB)
    yF = yF./hF;
 
    % extracting the required data subcarriers
-   yMod = yF(:,[6+[1:nBitPerSym/2] 7+[nBitPerSym/2+1:nBitPerSym] ]); 
-
+%   yMod = yF(:,[6+[1:nBitPerSym/2] 7+[nBitPerSym/2+1:nBitPerSym] ]); 
+   yMod = yF(:,1:nDSC); 
+    
+   if ~qpsk
    % BPSK demodulation
    % +ve value --> 1, -ve value --> -1
    ipModHat = 2*floor(real(yMod/2)) + 1;
@@ -81,13 +91,20 @@ for ii = 1:length(EbN0dB)
    % converting modulated values into bits
    ipBitHat = (ipModHat+1)/2;
    ipBitHat = reshape(ipBitHat.',nBitPerSym*nSym,1).';
-
+   else
+       yMod = reshape(yMod,nDSC*nSym,1);
+       ipBitHat = transpose(symbolDegen(yMod,'QPSK'));
+   end
    % counting the errors
    nErr(ii) = size(find(ipBitHat - ipBit),2);
 
 end
 
-simBer = nErr/(nSym*nBitPerSym);
+if ~qpsk
+    simBer = nErr/(nSym*nBitPerSym);
+else
+    simBer = nErr/(nSym*nBitPerSym*2);
+end
 EbN0Lin = 10.^(EbN0dB/10);
 theoryBer = 0.5.*(1-sqrt(EbN0Lin./(EbN0Lin+1)));
 

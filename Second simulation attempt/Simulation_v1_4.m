@@ -24,10 +24,10 @@ clc;
 nSym        = ceil(length(symbols)/system.nDSC);   % number of OFDM symbols
 
 T           = system.fDev(system.DSCindex)^(-1);
-OSF         = 2; % over samplings factor
+OSF         = 1; % over samplings factor
 fs          = sum(system.fDev)*OSF;
 nCP         = ceil(system.CP_dur*fs*10^(-6)); % number of samples corrosponding to duration
-
+EbN0        = channel.SNR - 10*log10(system.BPS*(1-system.fDev(system.DSCindex)*system.CP_dur*10^(-6)));
 
 
 
@@ -36,10 +36,12 @@ nCP         = ceil(system.CP_dur*fs*10^(-6)); % number of samples corrosponding 
 %%%%%%%%%%%%%%%%%
 
 % S/P
+%symbols = ones(1,system.nDSC);
 symbolsPar = ser2par(symbols,system.nDSC);
 
 % assign data subcarriers to OFDM subcarriers
 xF = [symbolsPar zeros(nSym,system.nFFT-system.nDSC)] ;
+%xF = [zeros(nSym,6) ipMod(:,[1:system.nDSC/2]) zeros(nSym,1) ipMod(:,[system.nDSC+1:system.nDSC]) zeros(nSym,5)] ;
 
 % IFFT
 sz_xF = size(xF);
@@ -55,9 +57,9 @@ end
 
 % Normalize ?
 %xt = (system.nFFT/sqrt(system.nDSC))*xt;
-
+xt = (system.nFFT/sqrt(system.nDSC))*ifft(fftshift(xF.')).';
 % insert cyclic prefix
-xt = [xt(:,end-nCP) xt];
+xt = [xt(:,end-nCP+1:end) xt];
 
 % concatenate symbols to form long vector
 
@@ -66,11 +68,13 @@ switch (channel.type)
     case 0 % No channel
         nTap = 1;
         xht = xt;
+        hF = ones(nSym,system.nFFT);
     case 1 % multipath rayleigh fading
         nTap = ceil(channel.dt*fs);
         ht = 1/sqrt(2)*1/sqrt(nTap)*(randn(nSym,nTap) + j*randn(nSym,nTap));
 
         % computing and storing the frequency response of the channel, for use at recevier
+        hF = fft(ht,system.nFFT,2);
         hF = fftshift(fft(ht,system.nFFT,2));
 
         % convolution of each symbol with the random channel
@@ -80,6 +84,7 @@ switch (channel.type)
     otherwise 
         nTap = 1;
         xht = xt;
+        hF = ones(nSym,system.nFFT);
         %disp('No channel used');
 end
 
@@ -90,9 +95,9 @@ xvec = reshape(xht.',1,nSym*(OSF*system.nFFT+nCP+nTap-1));
 %    nt = 1/sqrt(2)*[randn(1,length(xvec)) + j*randn(1,length(xvec))];
 % 
 %    % Adding noise, the term sqrt(80/64) is to account for the wasted energy due to cyclic prefix
-%    yvec = sqrt((system.nFFT+nCP)/system.nFFT)*xvec + 10^(channel.EbN0/20)*nt;
+%    yvec = sqrt((system.nFFT+nCP)/system.nFFT)*xvec + 10^(EbN0/20)*nt;
 
-snr_mark = channel.EbN0 - 10*log10(OSF*system.nFFT);	
+snr_mark = EbN0 - 10*log10(OSF*system.nFFT);	
 %	=eff./10^(snr_mark/10)			
 sigma_i_mark = 1/10^(snr_mark/10);	
 %	Add noise		
@@ -118,6 +123,10 @@ for sample = 1:sz_yt(1)
         recSymPar(sample,bin) = mean(yt(sample,1:length(Temp)).*Temp);
     end
 end   
+recSymPar = (sqrt(system.nDSC)/system.nFFT)*fftshift(fft(yt.')).';
+% equalization by the known channel frequency response
+   recSymPar = recSymPar./hF;
+
 RecSym = reshape(transpose(recSymPar(:,system.DSCindex:system.DSCindex+system.nDSC-1)),length(symbols),1);
 %RecSym = zeros(1,length(symbols));
 

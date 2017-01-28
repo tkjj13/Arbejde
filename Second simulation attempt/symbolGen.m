@@ -7,7 +7,7 @@ switch(Mod_scheme)
         symbols = 2*Bits-1;
     case 'QPSK'
         parallel_bits = ser2par(Bits,2);
-        symbols = 2*parallel_bits(:,1)-1+(2*parallel_bits(:,2)-1)*1i;
+        symbols = 1/sqrt(2)*(2*parallel_bits(:,1)-1+(2*parallel_bits(:,2)-1)*1i);
     case '8PSK'
         parallel_bits = ser2par(Bits,3);
         [number_of_symbols, ~] = size(parallel_bits);

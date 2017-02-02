@@ -17,8 +17,11 @@ function [RecSym] = Simulation_v1_3(system,channel,symbols)
 % Phase track
 % P/S
 
-
-
+OSF = 1;
+fDevMax     = max(system.fDev);
+TMin        = fDevMax^(-1);
+fDevDSC     = system.fDev(system.DSCindex);
+TDSC        = fDevDSC^(-1);
 % system.fDev = [repmat(1000,1,5) repmat(2000,1,5)];
 system.fc = [0 10000 20000 30000 40000 60000 80000 100000 120000 140000 160000];
 % system.nFFT = 1024;
@@ -96,17 +99,18 @@ end
 
 % noise
 
-%	snr=Eb_No-10log(BW/rb)		
-snr_mark = channel.EbN0 - 10*log10(system.nFFT);	
-%	=eff./10^(snr_mark/10)			
-sigma_i_mark = 1/10^(snr_mark/10);	
-%	Add noise		
-x_xi = rand(1,length(y1));			%	random	number	between	0	and	1
-x_psi = rand(1,length(y1));	
-
-xi = sqrt(-2*sigma_i_mark*(x_xi));	
-y = y1+(xi.*cos(2*pi*x_psi)+1i*xi.*sin(2*pi*x_psi));	%ri(t)=si(t)+ni(t)	 rq(t)=sq(t)+nq(t)	
+% %	snr=Eb_No-10log(BW/rb)		
+% snr_mark = channel.EbN0 - 10*log10(system.nFFT);	
+% %	=eff./10^(snr_mark/10)			
+% sigma_i_mark = 1/10^(snr_mark/10);	
+% %	Add noise		
+% x_xi = rand(1,length(y1));			%	random	number	between	0	and	1
+% x_psi = rand(1,length(y1));	
+% 
+% xi = sqrt(-2*sigma_i_mark*(x_xi));	
+% y = y1+(xi.*cos(2*pi*x_psi)+1i*xi.*sin(2*pi*x_psi));	%ri(t)=si(t)+ni(t)	 rq(t)=sq(t)+nq(t)	
 	
+y = awgn(y1,channel.SNR - 10*log10((TDSC+system.CP_dur*10^(-6))/TDSC)-10*log10(sum(system.fDev)/(system.nFFT*fDevDSC)*OSF/system.BPS),'measured');
 
 
 

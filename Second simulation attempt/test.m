@@ -3,21 +3,15 @@ close all
 clear all
 
 
-clc
-close all
-clear all
-
-
 snr = -15:35;
 M = 2;
 scheme = 'BPSK';
 mod = comm.PSKModulator(M,pi/M);
 demod = comm.PSKDemodulator(M,pi/M);
 for n = 1:length(snr)
-    bits = randi([0 1],6*2^15,1);
-    %channelInput = step(mod, bits);
-    %bitspar = ser2par(bits,log2(M));
-    channelInput = symbolGen(bits,scheme);
+    bits = randi([0 M-1],6*2^15,1);
+    channelInput = step(mod, bits);
+    %channelInput = symbolGen(bits,scheme);
     
     
     hRayleighChan = comm.RayleighChannel(...
@@ -50,10 +44,10 @@ for n = 1:length(snr)
     
     % Restore the logged global stream
     RandStream.setGlobalStream(loggedStream);
-    y = awgn(chanOut1,snr(n));
-    %channelOut = step(demod,y);
-    y = y./fft(pathGains1,1,2);
-    channelOut = symbolDegen(y,scheme);
+    %y = awgn(chanOut1,snr(n));
+    channelOut = step(demod,chanOut1);
+    %y = y./fft(pathGains1,1,2);
+    %channelOut = symbolDegen(y,scheme);
     ber(n) = sum(xor(channelOut,bits))/length(bits);
 end
 

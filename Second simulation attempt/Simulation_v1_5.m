@@ -101,17 +101,9 @@ switch (channel.type)
         xht = xvec;
         hF = ones(1,system.nFFT);
     case 1 % multipath rayleigh fading
-        nTap = ceil(channel.dt*fs);
-        ht = 1/sqrt(2)*1/sqrt(nTap)*(randn(1,nTap) + j*randn(1,nTap));
+        chan = rayleighchan(1/fs,100);
+        xht = filter(chan,xvec);
         
-        % computing and storing the frequency response of the channel, for use at recevier
-        hF = fft(ht,system.nFFT,2);
-        %hF = fftshift(fft(ht,system.nFFT,2));
-        
-        % convolution of each symbol with the random channel
-        for jj = 1:1
-            xht(jj,:) = conv(ht(jj,:),xvec(jj,:));
-        end
     otherwise
         nTap = 1;
         xht = xvec;
@@ -145,7 +137,7 @@ for sample = 1:sz_yt(1)
 end
 %recSymPar = (sqrt(system.nDSC)/system.nFFT)*fftshift(fft(yt.')).';
 % equalization by the known channel frequency response
-recSymPar = recSymPar./repmat(hF,100,1);
+%recSymPar = recSymPar./repmat(hF,100,1);
 
 RecSym = reshape(transpose(recSymPar(:,system.DSCindex:system.DSCindex+system.nDSC-1)),length(symbols),1);
 %RecSym = zeros(1,length(symbols));

@@ -17,7 +17,7 @@ nFFT        = 128; % fft size
 nDSC        = 100; % number of data subcarriers
 nBitPerSym  = nDSC; % number of bits per OFDM symbol (same as the number of subcarriers for BPSK)
 nSym        = 10^4; % number of symbols
-qpsk        = 1;
+qpsk        = 0;
 
 EbN0dB      = [0:35]; % bit to noise ratio
 EsN0dB      = EbN0dB + 10*log10(nDSC/nFFT) + 10*log10(nFFT/(nFFT+16)); % converting to symbol to noise ratio
